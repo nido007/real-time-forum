@@ -11,6 +11,10 @@ type User struct {
 	Username     string    `json:"username" db:"username"`     // Unique username for login and display
 	Email        string    `json:"email" db:"email"`           // Unique email address for login
 	PasswordHash string    `json:"-" db:"password_hash"`       // Hashed password (never send in JSON)
+	Age          int       `json:"age" db:"age"`               // User's age
+	Gender       string    `json:"gender" db:"gender"`         // User's gender
+	FirstName    string    `json:"first_name" db:"first_name"` // User's first name
+	LastName     string    `json:"last_name" db:"last_name"`   // User's last name
 	CreatedAt    time.Time `json:"created_at" db:"created_at"` // When the user account was created
 	UpdatedAt    time.Time `json:"updated_at" db:"updated_at"` // When the user account was last updated
 }

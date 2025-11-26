@@ -1,0 +1,32 @@
+# Binaries
+/backend/main
+/backend/*.exe
+/backend/*.exe~
+/backend/*.dll
+/backend/*.so
+/backend/*.dylib
+
+# Logs
+*.log
+/backend/debug.log
+
+# Database
+*.db
+*.db.backup
+*.sqlite
+*.sqlite3
+
+# OS Specific
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Node
+node_modules/
+npm-debug.log
+
+# Test artifacts
+cookies.txt

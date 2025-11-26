@@ -1,61 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Real-Time Forum</title>
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
-    <!-- Main Container -->
-    <div id="app">
-        <!-- Navigation Bar -->
-        <nav id="navbar">
-            <div class="nav-container">
-                <h1>🌐 Real-Time Forum</h1>
-                <div id="user-info"></div>
+    <!-- Navigation Bar -->
+    <nav id="navbar">
+        <div class="nav-container">
+            <h1>🌐 Real-Time Forum</h1>
+            <div id="user-info">
+                <!-- Dynamic User Info/Login Buttons -->
             </div>
-        </nav>
-
-        <!-- Main Content Area -->
-        <div class="main-container">
-            <!-- Sidebar - Online Users -->
-            <aside id="sidebar" class="sidebar">
-                <h3>💬 Online Users</h3>
-                <div id="online-users-list"></div>
-            </aside>
-
-            <!-- Center - Content/Chat -->
-            <main id="content" class="content">
-                <div id="chat-area" class="hidden">
-                    <div class="chat-header">
-                        <h2 id="chat-with">Select a user to chat</h2>
-                    </div>
-                    <div id="messages" class="messages"></div>
-                    <div class="input-area">
-                        <input 
-                            type="text" 
-                            id="message-input" 
-                            placeholder="Type a message..."
-                            disabled
-                        >
-                        <button id="send-button" disabled>Send</button>
-                    </div>
-                </div>
-
-                <div id="welcome-screen">
-                    <h2>Welcome to Real-Time Forum!</h2>
-                    <p>Select a user from the sidebar to start chatting.</p>
-                </div>
-            </main>
         </div>
+    </nav>
+
+    <!-- Main Application Container -->
+    <div id="app" class="container">
+        <!-- Dynamic Content Will Be Loaded Here -->
     </div>
 
     <!-- JavaScript Files -->
     <script src="js/config.js"></script>
-    <script src="js/websocket.js"></script>
     <script src="js/api.js"></script>
+    <script src="js/views.js"></script>
+    <script src="js/websocket.js"></script>
     <script src="js/chat.js"></script>
     <script src="js/app.js"></script>
 </body>
+
 </html>

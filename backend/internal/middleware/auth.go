@@ -2,7 +2,9 @@ package middleware
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"real-time-forum/internal/database"
@@ -27,8 +29,10 @@ func (m *AuthMiddleware) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 		// Check if user is authenticated
 		user := m.GetCurrentUser(r)
 		if user == nil {
-			// User is not authenticated, redirect to login
-			http.Redirect(w, r, "/login?redirect="+r.URL.Path, http.StatusSeeOther)
+			// User is not authenticated, return 401
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`{"error": "Unauthorized"}`))
 			return
 		}
 
@@ -68,12 +72,22 @@ func (m *AuthMiddleware) GetCurrentUser(r *http.Request) *database.User {
 	var expiresAt time.Time
 	err = m.db.QueryRow(`
 		SELECT user_id, expires_at FROM sessions 
-		WHERE token = ? AND expires_at > ?
-	`, cookie.Value, time.Now()).Scan(&userID, &expiresAt)
+		WHERE token = ?
+	`, cookie.Value).Scan(&userID, &expiresAt)
+
+	f, _ := os.OpenFile("debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	defer f.Close()
 
 	if err != nil {
-		return nil // Session not found or expired
+		fmt.Fprintf(f, "Lookup failed. Token: %s, Error: %v\n", cookie.Value, err)
+		return nil // Session not found
 	}
+
+	if time.Now().UTC().After(expiresAt) {
+		fmt.Fprintf(f, "Expired. Token: %s, Expires: %v, Now: %v\n", cookie.Value, expiresAt, time.Now().UTC())
+		return nil // Session expired
+	}
+	fmt.Fprintf(f, "Success. Token: %s, UserID: %d\n", cookie.Value, userID)
 
 	// Get user details
 	var user database.User
@@ -83,8 +97,10 @@ func (m *AuthMiddleware) GetCurrentUser(r *http.Request) *database.User {
 	`, userID).Scan(&user.ID, &user.Username, &user.Email, &user.CreatedAt, &user.UpdatedAt)
 
 	if err != nil {
+		fmt.Fprintf(f, "User lookup failed for ID %d: %v\n", userID, err)
 		return nil // User not found
 	}
+	fmt.Fprintf(f, "User found: %s\n", user.Username)
 
 	return &user
 }

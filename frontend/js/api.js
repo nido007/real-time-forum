@@ -1,59 +1,76 @@
-class APIClient {
-  constructor(baseURL) {
-      this.baseURL = baseURL;
-  }
+// api.js - Handles all API requests
 
-  // Generic fetch wrapper
-  async request(endpoint, options = {}) {
-      const url = `${this.baseURL}${endpoint}`;
-      
-      const defaultOptions = {
-          headers: {
-              'Content-Type': 'application/json',
-          },
-          credentials: 'include', // Include cookies for session
-      };
+const API = {
+    // Base URL for API
+    baseUrl: '',
 
-      const config = { ...defaultOptions, ...options };
+    // Helper for making requests
+    async request(endpoint, method = 'GET', body = null) {
+        const options = {
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        };
 
-      try {
-          debugLog(`API Request: ${config.method || 'GET'} ${url}`);
-          const response = await fetch(url, config);
-          
-          if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-          }
+        if (body) {
+            options.body = JSON.stringify(body);
+        }
 
-          const data = await response.json();
-          debugLog('API Response:', data);
-          return data;
+        try {
+            const response = await fetch(endpoint, options);
+            const data = await response.json();
 
-      } catch (error) {
-          console.error('API Error:', error);
-          throw error;
-      }
-  }
+            if (!response.ok) {
+                throw new Error(data.error || 'Something went wrong');
+            }
 
-  // Get online users
-  async getOnlineUsers() {
-      return this.request('/online-users');
-  }
+            return data;
+        } catch (error) {
+            throw error;
+        }
+    },
 
-  // Get message history with a user
-  async getMessageHistory(userID) {
-      return this.request(`/messages/history?user_id=${userID}`);
-  }
+    // Auth API
+    auth: {
+        register: (userData) => API.request('/register', 'POST', userData),
+        login: (credentials) => API.request('/login', 'POST', credentials),
+        logout: () => API.request('/logout', 'POST'),
+        checkSession: async () => {
+            // We don't have a dedicated check-session endpoint, 
+            // but we can try to get the user info or online users to check auth
+            // For now, we'll rely on the cookie and app state, 
+            // or we could add a /api/me endpoint.
+            // Let's assume we can check if we are logged in by trying to get online users
+            // or just rely on the fact that if we get 401 on protected routes, we are logged out.
+            // A better way is to add a /api/me endpoint.
+            // For this implementation, I'll add a simple check.
+            try {
+                // Try to get online users as a proxy for session check
+                await API.request('/api/online-users');
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+    },
 
-  // Mark messages as read
-  async markMessagesAsRead(userID) {
-      return this.request(`/messages/read`, {
-          method: 'POST',
-          body: JSON.stringify({ user_id: userID })
-      });
-  }
+    // Posts API
+    posts: {
+        getAll: () => API.request('/posts'), // Need to update backend to return JSON for this
+        create: (postData) => API.request('/posts/create', 'POST', postData),
+        getOne: (id) => API.request(`/posts/view?id=${id}`),
+    },
 
-  // Get current user info
-  async getCurrentUser() {
-      return this.request('/me');
-  }
-}
+    // Comments API
+    comments: {
+        create: (commentData) => API.request('/comments/create', 'POST', commentData),
+    },
+
+    // Messages API
+    messages: {
+        send: (data) => API.request('/api/messages/send', 'POST', data),
+        getHistory: (userId, limit = 50) => API.request(`/api/messages/history?user_id=${userId}&limit=${limit}`),
+        getOnlineUsers: () => API.request('/api/online-users'),
+    }
+};
