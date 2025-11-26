@@ -14,7 +14,6 @@ import (
 	"real-time-forum/internal/handlers"
 	"real-time-forum/internal/middleware"
 	"real-time-forum/internal/websocket"
-	// ADD THIS LINE
 )
 
 func main() {
@@ -38,10 +37,13 @@ func main() {
 	hub := websocket.NewHub()
 	go hub.Run() // Start hub in a goroutine
 	log.Println("🔌 WebSocket hub initialized")
+
 	// Create messages handler
 	messagesHandler := handlers.NewMessagesHandler(db, hub, authMiddleware)
+
 	// Set up routes
 	setupRoutes(authHandler, authMiddleware, postsHandler, commentsHandler, votesHandler, hub, messagesHandler)
+
 	// Start cleanup routine
 	go startSessionCleanup(authMiddleware)
 
@@ -58,8 +60,10 @@ func main() {
 	fmt.Println("   - GET  /posts/view?id=X")
 	fmt.Println("   - POST /comments/create")
 	fmt.Println("   - POST /vote")
-	fmt.Println("   - POST /vote")
 	fmt.Println("   - WS   /ws (WebSocket connection)")
+	fmt.Println("   - POST /api/messages/send")
+	fmt.Println("   - GET  /api/messages/history")
+	fmt.Println("   - GET  /api/online-users")
 
 	// Graceful shutdown
 	setupGracefulShutdown(db)
@@ -85,16 +89,18 @@ func setupRoutes(authHandler *handlers.AuthHandler, authMiddleware *middleware.A
 	http.HandleFunc("/posts/create", logRequest(authMiddleware.RequireAuth(postsHandler.CreatePostHandler)))
 	http.HandleFunc("/posts/view", logRequest(postsHandler.ViewPostHandler))
 
-	// Comments routes (MAKE SURE THESE ARE HERE)
+	// Comments routes
 	http.HandleFunc("/comments/create", logRequest(authMiddleware.RequireAuth(commentsHandler.CreateCommentHandler)))
 
 	// Voting routes
 	http.HandleFunc("/vote", logRequest(authMiddleware.RequireAuth(votesHandler.VoteHandler)))
-	// Message API routes (ADD THESE)
+
+	// Message API routes
 	http.HandleFunc("/api/messages/send", logRequest(authMiddleware.RequireAuth(messagesHandler.SendMessage)))
 	http.HandleFunc("/api/messages/history", logRequest(authMiddleware.RequireAuth(messagesHandler.GetMessageHistory)))
 	http.HandleFunc("/api/online-users", logRequest(authMiddleware.RequireAuth(messagesHandler.GetOnlineUsers)))
 	log.Println("💬 Message API endpoints registered")
+
 	// WebSocket endpoint
 	http.HandleFunc("/ws", logRequest(func(w http.ResponseWriter, r *http.Request) {
 		websocket.HandleWebSocket(hub, func(req *http.Request) (int, error) {
@@ -109,7 +115,6 @@ func setupRoutes(authHandler *handlers.AuthHandler, authMiddleware *middleware.A
 	fmt.Println("✅ All routes configured successfully!")
 }
 
-// ... rest of the functions remain the same (homeHandler, logRequest, etc.)
 func homeHandler(authMiddleware *middleware.AuthMiddleware) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
@@ -264,6 +269,7 @@ func generateHomepage(user *database.User) string {
 	</html>
 	`, userSection, time.Now().Format("2006-01-02 15:04:05 MST"))
 }
+
 func logRequest(handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -283,6 +289,7 @@ func getPort() string {
 	}
 	return port
 }
+
 func startSessionCleanup(authMiddleware *middleware.AuthMiddleware) {
 	ticker := time.NewTicker(30 * time.Minute)
 	defer ticker.Stop()
@@ -296,6 +303,7 @@ func startSessionCleanup(authMiddleware *middleware.AuthMiddleware) {
 		}
 	}
 }
+
 func setupGracefulShutdown(db *sql.DB) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -321,3 +329,5 @@ func getUserIDFromRequest(r *http.Request, authMiddleware *middleware.AuthMiddle
 	}
 	return user.ID, nil
 }
+
+// my forum project

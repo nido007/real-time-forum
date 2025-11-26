@@ -1,7 +1,6 @@
 package websocket
 
 import (
-	"encoding/json"
 	"log"
 	"time"
 
@@ -22,34 +21,16 @@ const (
 	maxMessageSize = 512
 )
 
-// Client represents a WebSocket client connection
+// Client represents a single websocket connection
 type Client struct {
-	hub *Hub
-
-	// User information
-	userID   int
-	username string
-
-	// WebSocket connection
-	conn *websocket.Conn
-
-	// Buffered channel of outbound messages
-	send chan Message
+	hub    *Hub
+	conn   *websocket.Conn
+	send   chan []byte
+	UserID int
 }
 
-// NewClient creates a new client instance
-func NewClient(hub *Hub, conn *websocket.Conn, userID int, username string) *Client {
-	return &Client{
-		hub:      hub,
-		conn:     conn,
-		userID:   userID,
-		username: username,
-		send:     make(chan Message, 256),
-	}
-}
-
-// readPump pumps messages from the WebSocket connection to the hub
-func (c *Client) ReadPump() {
+// readPump pumps messages from the websocket connection to the hub
+func (c *Client) readPump() {
 	defer func() {
 		c.hub.unregister <- c
 		c.conn.Close()
@@ -63,28 +44,19 @@ func (c *Client) ReadPump() {
 	})
 
 	for {
-		// Read message from WebSocket
-		var message Message
-		err := c.conn.ReadJSON(&message)
+		_, message, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("WebSocket error: %v", err)
 			}
 			break
 		}
-
-		// Add sender information to message
-		message.From = c.userID
-		message.Username = c.username
-		message.Timestamp = time.Now().Format(time.RFC3339)
-
-		// Send message to hub for processing
 		c.hub.broadcast <- message
 	}
 }
 
-// writePump pumps messages from the hub to the WebSocket connection
-func (c *Client) WritePump() {
+// writePump pumps messages from the hub to the websocket connection
+func (c *Client) writePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
@@ -96,13 +68,25 @@ func (c *Client) WritePump() {
 		case message, ok := <-c.send:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
-				// Hub closed the channel
+				// The hub closed the channel
 				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
 
-			// Write message to WebSocket
-			if err := c.conn.WriteJSON(message); err != nil {
+			w, err := c.conn.NextWriter(websocket.TextMessage)
+			if err != nil {
+				return
+			}
+			w.Write(message)
+
+			// Add queued messages to the current websocket message
+			n := len(c.send)
+			for i := 0; i < n; i++ {
+				w.Write([]byte{'\n'})
+				w.Write(<-c.send)
+			}
+
+			if err := w.Close(); err != nil {
 				return
 			}
 
@@ -112,16 +96,5 @@ func (c *Client) WritePump() {
 				return
 			}
 		}
-	}
-}
-
-// SendMessage sends a message to this client
-func (c *Client) SendMessage(message Message) {
-	select {
-	case c.send <- message:
-	default:
-		// Channel is full, close it
-		close(c.send)
-		delete(c.hub.clients, c.userID)
 	}
 }

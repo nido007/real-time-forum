@@ -38,7 +38,7 @@ func HandleWebSocket(hub *Hub, getUserID func(*http.Request) (int, error)) http.
 		client := &Client{
 			hub:    hub,
 			conn:   conn,
-			send:   make(chan *Message, 256),
+			send:   make(chan []byte, 256),
 			UserID: userID,
 		}
 
